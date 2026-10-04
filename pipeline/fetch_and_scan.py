@@ -28,6 +28,9 @@ with open("data/raw/bvbrc_ecoli_amr.tsv") as f:
     for r in csv.DictReader(f, delimiter="\t"):
         if r["antibiotic"] in DRUGS and r["resistant_phenotype"] in ("Resistant", "Susceptible"):
             pairs.add((r["genome_id"], r["antibiotic"]))
+if os.path.exists("data/processed/mic_labels.csv"):  # genomes labelled via the biotech lead's MIC cutoffs
+    with open("data/processed/mic_labels.csv") as f:
+        pairs |= {(r["genome_id"], r["antibiotic"]) for r in csv.DictReader(f) if r["antibiotic"] in DRUGS}
 counts = Counter(g for g, _ in pairs)
 genomes = sorted(counts, key=lambda g: (-counts[g], g))[:N]
 with open("data/processed/genome_list.csv", "w") as f:

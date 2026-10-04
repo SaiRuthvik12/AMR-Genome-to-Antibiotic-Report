@@ -26,7 +26,13 @@ scanned = sorted(os.path.basename(f)[:-4] for f in glob.glob("data/amrfinder/*.t
 d = pd.read_csv("data/raw/bvbrc_ecoli_amr.tsv", sep="\t", dtype=str)
 d = d[d.antibiotic.isin(DRUGS) & d.resistant_phenotype.isin(["Resistant", "Susceptible"]) & d.genome_id.isin(scanned)]
 lab = d.groupby(["genome_id", "antibiotic"]).resistant_phenotype.agg(lambda s: s.iloc[0] if s.nunique() == 1 else None)
-labels = (lab.dropna() == "Resistant").astype(int).unstack().reindex(index=scanned, columns=DRUGS)
+lab = lab.dropna()
+if os.path.exists("data/processed/mic_labels.csv"):  # MIC-derived labels fill gaps; reported verdicts win
+    mic = pd.read_csv("data/processed/mic_labels.csv", dtype=str).set_index(["genome_id", "antibiotic"]).resistant_phenotype
+    mic = mic[mic.index.get_level_values(0).isin(scanned) & ~mic.index.isin(lab.index)]
+    lab = pd.concat([lab, mic])
+    print(f"added {len(mic)} MIC-derived labels")
+labels = (lab == "Resistant").astype(int).unstack().reindex(index=scanned, columns=DRUGS)
 labels.index.name = "genome_id"
 
 counts = hits.marker.value_counts()
