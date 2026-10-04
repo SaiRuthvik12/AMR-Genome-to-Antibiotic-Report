@@ -26,6 +26,12 @@ Full plan (source of truth for scope and roles): https://claude.ai/code/artifact
 ## Status (Oct 4)
 - 5,991 genomes scanned (`data/amrfinder/`); 9 rejected as incomplete downloads (`data/processed/failed.txt`).
 - `model/build_table.py` → `data/processed/{features,labels,overview}.csv`: 229 AMR markers (seen in ≥5 genomes).
+- GOTCHA: `mlst` autodetect breaks score ties at random (e.g. E. coli ST131 == Salmonella ST3529, score 100), so it
+  mislabels ~5% of genomes. Always pass `--scheme ecoli_achtman_4`; check species with Mash distance instead.
+- Species check: only 16 genomes are > 0.05 Mash distance from a confirmed E. coli.
+- `model/baseline_rules.py` with the DRAFT marker map over-calls resistance (major errors 19–99%): blaEC/blaEC-5
+  (chromosomal AmpC, in ~80% of genomes), marR_S3N (more common in susceptible!) and minor parE mutations are
+  mapped but not predictive. The biotech lead's map review fixes this.
 - 5,022 unscanned genomes have MIC-only results for our drugs → candidates for a second overnight run
   once breakpoints are filled in (~11 GB disk).
 
