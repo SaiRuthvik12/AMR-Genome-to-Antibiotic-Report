@@ -19,7 +19,9 @@ Newest status is at the top; the steps below are in the order we did them.
 | 6. Simple-rule baseline | First version done (with draft marker map) |
 | 7. First ML model | Done (v1): big gain over draft rules, but dangerous-error rate still too high |
 | 8. Confidence + "uncertain" flag | Done (v1): dangerous errors cut 2–5x by flagging 12–30% of samples as uncertain |
-| 9. Re-run with biotech lead's corrected map + breakpoints | Waiting on biotech lead |
+| 9. Final models + explanations | Done: saved in `data/models/models.pkl`, per-marker evidence for every call |
+| 10. Re-run with biotech lead's corrected map + breakpoints | Waiting on biotech lead |
+| 11. Report + app | Next |
 | Biotech lead: breakpoints, marker map review | Waiting (see message sent Oct 4) |
 
 ---
@@ -327,6 +329,49 @@ truly resistant samples, same definition as step 7:
 
 ---
 
+## Step 9: Final models and explanations (Oct 4, afternoon)
+
+**What:** Train one final model per antibiotic on all good data, save it with its confidence bars, and explain every
+prediction by the markers behind it.
+
+**Why:** Doctors (and judges) won't trust a black box. "Resistant because it carries blaCTX-M-15, a known
+cephalosporin-destroying gene" is something a clinician can check.
+
+**How:** [`model/final.py`](../model/final.py). Logistic regression makes the explanation exact:
+
+```
+score = starting point + weight(marker 1) + weight(marker 2) + ...   (for the markers the sample has)
+```
+
+A positive weight pushes towards "resistant," a negative one towards "susceptible." So the evidence for a call is
+just the list of the sample's markers with their weights. `predict()` returns, per drug: the call (R / S /
+UNCERTAIN), the probability, the evidence, and any markers the model has never seen.
+
+**What the model learned** (`data/processed/top_markers.csv`): the strongest markers are the textbook ones, learned
+from data alone without the hand-made map:
+- Ampicillin: blaTEM-1, blaSHV-1, blaCMY-2, blaCTX-M (beta-lactamase enzymes)
+- Cefotaxime: the blaCTX-M family, blaCMY-2, carbapenemases (blaKPC-2, blaOXA-48)
+- Ciprofloxacin: parC_S80I, gyrA_S83L, gyrA_D87N mutations, qnrS1
+- Gentamicin: aac(3) and ant(2'') enzyme genes
+- Trimethoprim/sulfamethoxazole: the dfrA family
+
+**Things to be careful about (biotech lead to check):**
+- **Correlation, not cause:** e.g. blaCTX-M-55 gets weight towards ciprofloxacin resistance. It doesn't act on
+  ciprofloxacin; it often travels on the same piece of DNA (plasmid) as quinolone resistance genes, so they appear
+  together. Fine for prediction, but the report shouldn't present it as the reason.
+- **Near-universal markers** (acrF, emrD, in ~99% / ~76% of samples) get negative weights that just shift the
+  starting point. They're not real evidence and should be hidden from the report.
+
+**The two odd samples, explained:**
+- **562.100000:** the model says cefotaxime **R** (blaCTX-M-15, weight +5.5) but the lab said S. Either a lab error or
+  the gene isn't active. Exactly the kind of genome/lab disagreement the tool should flag for review.
+- **562.100002:** lab says ampicillin **R**, but the model confidently says **S** (p = 0.07), because the sample has no
+  known ampicillin marker. **This is the key limitation:** if resistance comes from a mechanism not in the database,
+  the model can't see it, and nothing looks unusual, so it isn't flagged as uncertain. The same happens for its
+  trimethoprim/sulfamethoxazole result. We must say this in the pitch.
+
+---
+
 ## Gotchas (so nobody repeats them)
 
 - BV-BRC's FTP server timed out; use their web API.
@@ -334,6 +379,8 @@ truly resistant samples, same definition as step 7:
 - `mlst` autodetect breaks ties at random; always pass `--scheme ecoli_achtman_4`.
 - The Claude Code background-task limit is 30 minutes; run long jobs with `nohup caffeinate -is ... &` so they
   continue independently.
+- **Sample IDs look like numbers** (`562.100000`). pandas reads them as floats (`562.1`), so two different samples
+  could silently merge. Always read CSVs with `dtype={"genome_id": str}`. (Checked: no collisions happened.)
 - A MacBook sleeps when the lid closes, even with `caffeinate`. Keep it open and plugged in for overnight runs.
 
 ## Where the data lives
