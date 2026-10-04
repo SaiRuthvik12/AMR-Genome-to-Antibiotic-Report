@@ -11,7 +11,7 @@ from sklearn.model_selection import GroupKFold, KFold
 
 from baseline_rules import features, labels, mapping, metrics
 
-lineage = pd.read_csv("data/processed/lineage.csv", index_col=0).cluster  # QC-passed genomes only
+lineage = pd.read_csv("data/processed/lineage.csv", index_col=0, dtype={"genome_id": str}).cluster  # QC-passed genomes only
 features, labels = features.loc[features.index.isin(lineage.index)], labels.loc[labels.index.isin(lineage.index)]
 
 MODELS = {

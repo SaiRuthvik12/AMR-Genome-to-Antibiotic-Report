@@ -8,13 +8,13 @@ import sys
 
 import pandas as pd
 
-features = pd.read_csv("data/processed/features.csv", index_col=0)
-labels = pd.read_csv("data/processed/labels.csv", index_col=0)
+features = pd.read_csv("data/processed/features.csv", index_col=0, dtype={"genome_id": str})
+labels = pd.read_csv("data/processed/labels.csv", index_col=0, dtype={"genome_id": str})
 if os.path.exists("data/processed/qc.csv"):
-    qc = pd.read_csv("data/processed/qc.csv", index_col=0)
+    qc = pd.read_csv("data/processed/qc.csv", index_col=0, dtype={"genome_id": str})
     keep = qc.index[qc.qc_pass]
     features, labels = features.loc[features.index.isin(keep)], labels.loc[labels.index.isin(keep)]
-mapping = pd.read_csv("pipeline/drug_marker_map.csv", index_col=0).draft_drugs.fillna("")
+mapping = pd.read_csv("pipeline/drug_marker_map.csv", index_col=0, dtype={"genome_id": str}).draft_drugs.fillna("")
 ignore = set(sys.argv[1:])
 
 
