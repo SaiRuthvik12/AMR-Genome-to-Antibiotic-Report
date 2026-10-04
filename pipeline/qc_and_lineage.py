@@ -24,8 +24,11 @@ gid = lambda path: os.path.basename(path).removesuffix(".fna.gz")
 q = pd.read_csv("data/processed/qc_stats.tsv", sep="\t")
 qc = pd.DataFrame({"genome_id": q.file.map(gid), "size_mb": (q.sum_len / 1e6).round(2),
                    "contigs": q.num_seqs, "n50": q.N50})
-m = pd.read_csv("data/processed/mlst_raw.tsv", sep="\t", header=None, usecols=[0, 1, 2], names=["file", "mlst_scheme", "ST"])
-qc = qc.merge(m.assign(genome_id=m.file.map(gid)).drop(columns=["file", "mlst_scheme"]), on="genome_id", how="left")
+if os.path.exists("data/processed/mlst_raw.tsv"):  # ST is descriptive only, so lineage can run without it
+    m = pd.read_csv("data/processed/mlst_raw.tsv", sep="\t", header=None, usecols=[0, 1, 2], names=["file", "mlst_scheme", "ST"])
+    qc = qc.merge(m.assign(genome_id=m.file.map(gid)).drop(columns=["file", "mlst_scheme"]), on="genome_id", how="left")
+else:
+    qc["ST"] = None
 sp = pd.read_csv("data/processed/species_dist.tsv", sep="\t", header=None, names=["file", "dist_to_ecoli"])
 qc = qc.merge(sp.assign(genome_id=sp.file.map(gid)).drop(columns="file"), on="genome_id", how="left")
 

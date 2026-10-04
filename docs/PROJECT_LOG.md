@@ -14,10 +14,11 @@ Newest status is at the top; the steps below are in the order we did them.
 | 1. Download lab results | Done |
 | 2. Download + scan 6,000 genomes (overnight) | Done |
 | 3. Build the ML table | Done |
-| 4. Quality check | Measurements done; final pass/fail waits on step 5 |
-| 5. Strain grouping (families) | Running: Mash comparison ~97%, `mlst` re-run in progress |
+| 4. Quality check | Done: 5,935 pass, 56 fail |
+| 5. Strain grouping (families) | Done: 544 families. `mlst` family names still running (descriptive only) |
 | 6. Simple-rule baseline | First version done (with draft marker map) |
-| 7. First ML model | Next |
+| 7. First ML model | Done (v1): big gain over draft rules, but dangerous-error rate still too high |
+| 8. Confidence + "uncertain" flag | Next |
 | Biotech lead: breakpoints, marker map review | Waiting (see message sent Oct 4) |
 
 ---
@@ -163,7 +164,7 @@ is from a confirmed *E. coli* (`data/processed/species_dist.tsv`). Rules in
 | Pieces (contigs) | 500 or fewer | More = shattered assembly, genes may be cut in half | ~26 |
 | Species | < 5% different from *E. coli* | More = mislabelled species | 16 |
 
-**Result:** About 1% of samples fail. Final pass/fail list (`data/processed/qc.csv`) is written together with step 5.
+**Result** (`data/processed/qc.csv`): 5,935 pass, 56 fail (26 wrong size, 21 too fragmented, 9 not *E. coli*).
 
 ---
 
@@ -195,6 +196,10 @@ flowchart LR
    family (graph "connected components", one `scipy` call). Output: `data/processed/lineage.csv`.
 4. **Family names (sequence types):** `mlst` gives each sample a standard ID (e.g. ST131, a well-known drug-resistant
    family). Used only to describe results, **never as a model input** (that would let the model recognise families).
+
+**Result** (`data/processed/lineage.csv`): at the 0.5% cutoff, **544 families**. The largest holds 767 samples
+(13%), and 320 samples have no close relative. We also tried 0.2% (1,699 families, many tiny) and 1% (one giant
+family with 40% of samples, which would make the split lopsided), so 0.5% is the middle ground.
 
 **Bug found and fixed:** `mlst` labelled ~280 *E. coli* as *Salmonella*. Its warning showed why: for some samples two
 species schemes score exactly equal, and it picks one at random. Running the same file 6 times gave different answers.
@@ -237,6 +242,42 @@ Mash confirmed these samples are *E. coli* (0.2–3% different from other *E. co
 
 **Why this matters for the pitch:** expert rules need careful tuning (the biotech lead's review), while an ML model
 can learn from the data which markers matter. Comparing the two is the core result.
+
+---
+
+## Step 7: First ML models (Oct 4, ~12:30 pm)
+
+**What:** Trained two kinds of model per antibiotic and compared them with the rules on the same samples.
+- **Logistic regression:** the simplest model. Gives each marker a weight ("how much does this marker push towards
+  resistant?") and adds them up.
+- **LightGBM:** a stronger model built from many small decision trees. It can learn combinations ("gyrA AND parC").
+
+**How:** [`model/train.py`](../model/train.py). **5-fold family cross-validation:** split the 544 families into 5
+groups; train on 4, test on the 5th, repeat 5 times so every sample gets tested exactly once by a model that never saw
+its family. Also ran a random split for comparison. Results saved in `data/processed/results_v1.csv`.
+
+**Result** (family split, threshold 0.5, no calibration yet):
+
+| Antibiotic | Rules (draft): VME / ME | Logistic regression: VME / ME | Balanced accuracy, rules → LR |
+|---|---|---|---|
+| Ampicillin | 0.0% / 100% | 10.9% / 2.5% | 50.0% → 93.3% |
+| Cefotaxime | 5.6% / 25.1% | 8.5% / 3.0% | 84.6% → 94.2% |
+| Ciprofloxacin | 1.3% / 39.2% | 4.3% / 1.2% | 79.8% → 97.3% |
+| Gentamicin | 7.9% / 0.8% | 7.1% / 1.4% | 95.7% → 95.7% |
+| Trimethoprim/sulfamethoxazole | 3.3% / 18.5% | 5.5% / 4.4% | 89.1% → 95.0% |
+
+VME = very major error (dangerous: said "works", it doesn't). ME = major error (wasteful).
+
+**What it means (honest reading):**
+1. **ML beats the draft rules by a lot**, mostly by cutting false "resistant" calls. But the draft rules are weak
+   (auto-guessed map), so this comparison is not fair yet. **Re-run after the biotech lead corrects the map** before
+   claiming anything in the pitch.
+2. **The simple model is as good as or better than the complex one.** Resistance here is mostly "has gene X or not,"
+   so logistic regression is enough. Simpler is also easier to explain to judges.
+3. **The random split only inflates scores by ~1–2 points** here, smaller than feared, because our inputs are known
+   resistance markers rather than raw DNA, which leaves less to memorise. Still worth reporting.
+4. **Dangerous errors (4–11%) are far above the ~1.5% clinical target.** That's the job of the next step: the
+   "uncertain" flag, so that when the model isn't sure it says "confirm with the lab" instead of guessing.
 
 ---
 
