@@ -6,3 +6,5 @@ data/raw/
 data/genomes/
 data/test_out/
 data/amrfinder/
+data/mash/
+*.tmp
