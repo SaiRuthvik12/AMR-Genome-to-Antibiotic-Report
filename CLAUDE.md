@@ -4,6 +4,7 @@ Upload an E. coli genome → per-antibiotic susceptible/resistant call, calibrat
 an UNCERTAIN flag (confirm with lab AST), and the genetic evidence. Research prototype, decision support only.
 
 Full plan (source of truth for scope and roles): https://claude.ai/code/artifact/7dbc4cdf-5882-4763-9f38-e686a4678c90
+Progress log for humans: `docs/PROJECT_LOG.md`. After finishing any step, update it (what/why/how/result/files) in plain language.
 
 ## Rules
 - Diagnostic/decision support only. Reports describe resistance evidence and uncertainty; no treatment or dosing advice.
