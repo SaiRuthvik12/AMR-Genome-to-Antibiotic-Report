@@ -18,6 +18,17 @@ Full plan (source of truth for scope and roles): https://claude.ai/code/artifact
 - `report.py`, `app.py`: report builder + Streamlit app
 - `data/raw`, `data/genomes`: large, gitignored, live only on the AI lead's laptop. Commit `data/processed/*.csv`.
 
+## Files the biotech lead owns (edited by hand, e.g. in the GitHub web editor)
+- `pipeline/breakpoints.csv`: EUCAST E. coli MIC cutoffs per drug → used to turn raw MIC values into S/R labels.
+- `pipeline/drug_marker_map.csv`: which resistance markers matter for which drug. `draft_drugs` was auto-guessed
+  from AMRFinderPlus Class/Subclass; trust `friend_correct?`/`friend_notes` over the draft once filled in.
+
+## Status (Oct 4)
+- 5,991 genomes scanned (`data/amrfinder/`); 9 rejected as incomplete downloads (`data/processed/failed.txt`).
+- `model/build_table.py` → `data/processed/{features,labels,overview}.csv`: 229 AMR markers (seen in ≥5 genomes).
+- 5,022 unscanned genomes have MIC-only results for our drugs → candidates for a second overnight run
+  once breakpoints are filled in (~11 GB disk).
+
 ## Environments
 - Bioinformatics tools (x86 via Rosetta on Apple Silicon):
   `CONDA_SUBDIR=osx-64 conda create -n amr --override-channels -c conda-forge -c bioconda python=3.11 ncbi-amrfinderplus mlst mash seqkit`

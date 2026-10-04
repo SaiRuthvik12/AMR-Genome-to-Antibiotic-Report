@@ -1,0 +1,6 @@
+antibiotic,susceptible_if_mic_le_mg_per_L,resistant_if_mic_gt_mg_per_L,eucast_table_version,notes
+ampicillin,,,,
+cefotaxime,,,,
+ciprofloxacin,,,,
+gentamicin,,,,
+trimethoprim/sulfamethoxazole,,,,
