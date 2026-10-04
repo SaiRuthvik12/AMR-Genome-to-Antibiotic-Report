@@ -18,7 +18,8 @@ Newest status is at the top; the steps below are in the order we did them.
 | 5. Strain grouping (families) | Done: 544 families. `mlst` family names still running (descriptive only) |
 | 6. Simple-rule baseline | First version done (with draft marker map) |
 | 7. First ML model | Done (v1): big gain over draft rules, but dangerous-error rate still too high |
-| 8. Confidence + "uncertain" flag | Next |
+| 8. Confidence + "uncertain" flag | Done (v1): dangerous errors cut 2–5x by flagging 12–30% of samples as uncertain |
+| 9. Re-run with biotech lead's corrected map + breakpoints | Waiting on biotech lead |
 | Biotech lead: breakpoints, marker map review | Waiting (see message sent Oct 4) |
 
 ---
@@ -278,6 +279,51 @@ VME = very major error (dangerous: said "works", it doesn't). ME = major error (
    resistance markers rather than raw DNA, which leaves less to memorise. Still worth reporting.
 4. **Dangerous errors (4–11%) are far above the ~1.5% clinical target.** That's the job of the next step: the
    "uncertain" flag, so that when the model isn't sure it says "confirm with the lab" instead of guessing.
+
+---
+
+## Step 8: Confidence and the "uncertain" flag (Oct 4, afternoon)
+
+**What:** Let the model say **UNCERTAIN, confirm with the lab** when it isn't sure, instead of guessing.
+
+**Why:** In step 7 the model made dangerous errors (said "works" when it doesn't) for 4–11% of resistant samples.
+The clinical target is around 1.5%. We can't make the model perfect, but we can make it **know when it's unsure**.
+
+**How:** [`model/confidence.py`](../model/confidence.py), using a statistical method called **conformal prediction**:
+1. We pick the error rate we're willing to accept, called **alpha** (e.g. 0.02 = at most ~2% errors).
+2. On samples the model didn't train on, we look at how confident it was when it was right vs wrong, and set a
+   **confidence bar** for each answer ("resistant", "susceptible") so that only ~alpha of true answers fall below it.
+3. For a new sample: if exactly one answer clears its bar, that's the call. If both or neither do, it's UNCERTAIN.
+
+**Trade-off:** a stricter alpha means fewer errors but more "uncertain" answers. Too many "uncertain" answers make the
+tool useless; too few make it unsafe. The table shows that trade-off.
+
+**First attempt failed, and why:** we first held back a random quarter of the training families for setting the
+bars. Because some families are huge, one family made up 26–55% of that quarter, so the bars fit that one family
+and didn't transfer: error rates came out up to 2x higher than promised. **Fix:** "cross-fitting". Rotate through
+the training families so every training sample gets a prediction from a model that never saw its family, then set
+the bars from all of them. After the fix, the promised error rates roughly hold.
+
+**Result** (family split; `data/processed/results_conformal_v1.csv`). VME = dangerous error, as a share of all
+truly resistant samples, same definition as step 7:
+
+| Antibiotic | No flag (step 7): VME | alpha 0.02: uncertain | alpha 0.02: VME / ME | alpha 0.05: uncertain | alpha 0.05: VME / ME |
+|---|---|---|---|---|---|
+| Ampicillin | 10.9% | 30% | 2.4% / 1.9% | 8% | 4.8% / 4.4% |
+| Cefotaxime | 8.5% | 60% | 1.5% / 1.8% | 16% | 5.3% / 4.2% |
+| Ciprofloxacin | 4.3% | 12% | 2.3% / 1.4% | 3% | 3.1% / 1.7% |
+| Gentamicin | 7.1% | 57% | 1.7% / 1.8% | 12% | 4.7% / 3.7% |
+| Trimethoprim/sulfamethoxazole | 5.5% | 31% | 2.1% / 2.3% | 2% | 4.9% / 5.0% |
+
+**What it means:**
+1. **The flag works.** For ciprofloxacin, flagging 12% of samples as uncertain halves dangerous errors (4.3% → 2.3%)
+   and the model is 98% accurate on the rest. For ampicillin, flagging 30% cuts them from 10.9% to 2.4%.
+2. **Cefotaxime and gentamicin need many "uncertain" answers (57–60%) to reach ~2% errors.** They have the fewest
+   resistant samples (668–722), so the model is less sure. More data (the MIC conversion) should help most here.
+3. **Slight overshoot:** at alpha 0.02, two drugs land at 2.3–2.4% instead of ≤2%. The guarantee assumes new families
+   resemble the training families, and that's only approximately true. We report it honestly.
+4. **Still above the ~1.5% clinical target** except cefotaxime. Next levers: corrected marker map, more data, and
+   possibly richer features (stress/efflux genes we left out).
 
 ---
 
