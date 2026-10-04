@@ -20,8 +20,8 @@ Newest status is at the top; the steps below are in the order we did them.
 | 7. First ML model | Done (v1): big gain over draft rules, but dangerous-error rate still too high |
 | 8. Confidence + "uncertain" flag | Done (v1): dangerous errors cut 2–5x by flagging 12–30% of samples as uncertain |
 | 9. Final models + explanations | Done: saved in `data/models/models.pkl`, per-marker evidence for every call |
-| 10. Re-run with biotech lead's corrected map + breakpoints | Waiting on biotech lead |
-| 11. Report + app | Next |
+| 10. Re-run with biotech lead's corrected map + breakpoints | Script ready (`./run_all.sh`); waiting on biotech lead |
+| 11. Report + app | Done: `streamlit run app.py` (AI summary needs an API key) |
 | Biotech lead: breakpoints, marker map review | Waiting (see message sent Oct 4) |
 
 ---
@@ -369,6 +369,48 @@ from data alone without the hand-made map:
   known ampicillin marker. **This is the key limitation:** if resistance comes from a mechanism not in the database,
   the model can't see it, and nothing looks unusual, so it isn't flagged as uncertain. The same happens for its
   trimethoprim/sulfamethoxazole result. We must say this in the pitch.
+
+---
+
+## Step 10: One-command re-run + MIC conversion (Oct 4, afternoon)
+
+**What:** [`run_all.sh`](../run_all.sh) re-runs everything from labels to final models in ~1.5 minutes, so the
+biotech lead's updates can be tested immediately. `./run_all.sh --genomes` also re-measures genomes (needed only
+after scanning new ones; slow).
+
+**MIC conversion:** [`pipeline/apply_breakpoints.py`](../pipeline/apply_breakpoints.py) turns raw MIC numbers into
+S/R labels using `pipeline/breakpoints.csv`. It does nothing while that file is blank. Conservative defaults: only
+dilution methods (the "disk diffusion" rows labelled mg/L hold values like 27–30 that look like zone sizes in mm),
+intermediate values dropped, trimethoprim/sulfamethoxazole uses the trimethoprim number from values like `1/19`.
+
+**Test with a temporary ciprofloxacin cutoff** (S ≤ 0.25, R > 0.5; removed afterwards): reported verdicts and today's
+cutoff agree on **99.5%** of 2,630 results, and it would add **3,728** new ciprofloxacin labels.
+
+`model/build_table.py` and `pipeline/fetch_and_scan.py` pick up these labels automatically.
+
+---
+
+## Step 11: The app (Oct 4, afternoon)
+
+**What:** [`app.py`](../app.py) (Streamlit) + [`report.py`](../report.py) (the engine). Pick an example isolate or
+upload a genome, and get:
+- Sample card: quality check, genome size, pieces, similarity to *E. coli*, number of markers.
+- AI summary (Claude Opus 5.5), written only from the report's JSON. It's hidden if it fails to cover every
+  antibiotic, and it never gives treatment advice. Needs `ANTHROPIC_API_KEY`; the app works without it.
+- One card per antibiotic: call (Resistant / Susceptible / Uncertain), probability bar, evidence chips (solid = known
+  mechanism for that drug, dashed = co-occurs but not a cause), and the lab result when known (matches / differs).
+- "How well it works" tab (family-held-out results) and "How it works" tab (method + limitations).
+
+**Honest demo:** three example isolates (`demo/`), each from a single-sample family, and those families are
+**left out of the final model's training**, so the demo shows predictions on truly unseen bacteria:
+- Multidrug-resistant (562.28131): resistant to all 5, carries blaNDM-1 and mcr-1; model agrees on all 5.
+- Mixed (562.100082): model gets 4 right and flags cefotaxime as uncertain.
+- Susceptible (562.100017): model agrees on all 5.
+
+**Details that matter:**
+- Background genes found in more than half of all genomes (acrF, blaEC, emrD, mdtM) are hidden from the evidence.
+- Probabilities above 99% are shown as ">99%", never "100%".
+- Uploaded genomes take ~50 seconds (AMRFinderPlus under Rosetta); examples use cached scans and are instant.
 
 ---
 
