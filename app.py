@@ -270,7 +270,7 @@ with tab_perf:
     rows = ""
     for _, r in conf[conf.alpha == a].iterrows():
         rows += (f'<tr><td><b>{DRUG_INFO[r.drug][0]}</b></td>'
-                 f'<td>{v1.loc[(r.drug, "rules (draft map)"), "balanced_acc"]:.0%}</td>'
+                 f'<td>{v1.loc[(r.drug, "rules (expert map)"), "balanced_acc"]:.0%}</td>'
                  f'<td>{v1.loc[(r.drug, "logistic regression"), "balanced_acc"]:.0%}</td>'
                  f'<td>{r.uncertain:.0%}</td><td>{r.accuracy_when_sure:.1%}</td>'
                  f'<td>{r.very_major_error:.1%}</td><td>{r.major_error:.1%}</td></tr>')
@@ -282,8 +282,8 @@ with tab_perf:
         f'<th>Balanced accuracy, simple rules</th><th>Balanced accuracy, model</th><th>Flagged uncertain</th>'
         f'<th>Accuracy when sure</th><th>Dangerous errors</th><th>Wasteful errors</th></tr>{rows}</table>'
         f'<div class="legend">Dangerous error: predicted the drug works when it does not (share of resistant samples). '
-        f'Wasteful error: predicted resistance when the drug works. Simple rules use a draft gene list that is still '
-        f'being reviewed, so that comparison will change.</div></div>', unsafe_allow_html=True)
+        f'Wasteful error: predicted resistance when the drug works. Simple rules: "resistant if any gene linked to the '
+        f'drug is present", using a gene list reviewed by our biotech lead.</div></div>', unsafe_allow_html=True)
 
 # ---------- About tab ----------
 with tab_about:

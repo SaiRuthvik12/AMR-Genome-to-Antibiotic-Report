@@ -1,6 +1,7 @@
 """Rule baseline = what existing tools do: predict RESISTANT if the genome carries any marker linked to that drug.
 
-Uses pipeline/drug_marker_map.csv (draft_drugs column; biotech lead's corrections override it later).
+Uses pipeline/drug_marker_map.csv: the biotech lead's review ("yes" keeps draft_drugs, "no" = no drug,
+"no + X; Y" = drugs X and Y) overrides the auto-guessed draft_drugs; unreviewed rows keep the draft.
 Usage: .venv/bin/python model/baseline_rules.py [marker_to_ignore ...]
 """
 import os
@@ -14,7 +15,14 @@ if os.path.exists("data/processed/qc.csv"):
     qc = pd.read_csv("data/processed/qc.csv", index_col=0, dtype={"genome_id": str})
     keep = qc.index[qc.qc_pass]
     features, labels = features.loc[features.index.isin(keep)], labels.loc[labels.index.isin(keep)]
-mapping = pd.read_csv("pipeline/drug_marker_map.csv", index_col=0, dtype={"genome_id": str}).draft_drugs.fillna("")
+def reviewed_drugs(row):
+    verdict = str(row["friend_correct?"]).strip() if pd.notna(row["friend_correct?"]) else ""
+    if verdict.lower().startswith("no"):
+        return verdict.partition("+")[2].strip()  # "no" -> "", "no + ampicillin" -> "ampicillin"
+    return row.draft_drugs if pd.notna(row.draft_drugs) else ""  # "yes" or not reviewed
+
+
+mapping = pd.read_csv("pipeline/drug_marker_map.csv", index_col=0).apply(reviewed_drugs, axis=1)
 ignore = set(sys.argv[1:])
 
 

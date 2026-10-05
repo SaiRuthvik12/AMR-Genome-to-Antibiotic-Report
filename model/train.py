@@ -34,7 +34,7 @@ for drug in labels.columns:
     y = labels[drug].dropna().astype(int)
     X = features.loc[y.index]
     rule_markers = [m for m, d in mapping.items() if drug in d.split("; ")]
-    rows.append({"drug": drug, "method": "rules (draft map)",
+    rows.append({"drug": drug, "method": "rules (expert map)",
                  **metrics(y, (X[rule_markers].sum(axis=1) > 0).astype(int))})
     for name, make in MODELS.items():
         pred = cross_val_predict(make, X, y, GroupKFold(5), groups=lineage.loc[y.index])

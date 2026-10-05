@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import GroupKFold
 
-from baseline_rules import features, labels
+from baseline_rules import features, labels, mapping
 from confidence import call, class_bars, lineage, make_model
 
 ALPHAS = [0.02, 0.05]
@@ -38,10 +38,9 @@ def build():
             p_oof[held] = make_model().fit(X.iloc[fit], y.iloc[fit]).predict_proba(X.iloc[held])[:, 1]
         saved[drug] = {"model": make_model().fit(X, y), "features": list(X.columns),
                        "bars": {a: class_bars(p_oof, y.values, a) for a in ALPHAS}}
-    mapping = pd.read_csv("pipeline/drug_marker_map.csv", index_col=0).draft_drugs.fillna("")
     saved = {"drugs": saved,
              "background": sorted(X_all.columns[X_all.mean() > BACKGROUND_SHARE]),
-             # known mechanism per drug (draft map for now; biotech lead's corrections will replace it)
+             # known mechanism per drug (biotech lead's reviewed map)
              "linked": {d: sorted(m for m, ds in mapping.items() if d in ds.split("; ")) for d in labels.columns}}
     os.makedirs("data/models", exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
