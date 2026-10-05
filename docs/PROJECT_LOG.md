@@ -20,7 +20,7 @@ Newest status is at the top; the steps below are in the order we did them.
 | 7. First ML model | Done (v1): big gain over draft rules, but dangerous-error rate still too high |
 | 8. Confidence + "uncertain" flag | Done (v1): dangerous errors cut 2–5x by flagging 12–30% of samples as uncertain |
 | 9. Final models + explanations | Done: saved in `data/models/models.pkl`, per-marker evidence for every call |
-| 10. Re-run with biotech lead's corrected map + breakpoints | Script ready (`./run_all.sh`); waiting on biotech lead |
+| 10. Re-run with biotech lead's corrected map + breakpoints | Done (Oct 5): fair rules-vs-model comparison; 17,118 new labels waiting for a second scan |
 | 11. Report + app | Done: `streamlit run app.py` (AI summary needs an API key) |
 | Biotech lead: breakpoints, marker map review | Waiting (see message sent Oct 4) |
 
@@ -414,6 +414,44 @@ upload a genome, and get:
 
 ---
 
+## Step 12: The biotech lead's review (Oct 5)
+
+**What they delivered** (decisions and reasons in `pipeline/Biotech Lead Decisions Log`):
+- **Cutoffs** (`pipeline/breakpoints.csv`): EUCAST v16.1, Enterobacterales, systemic (non-urinary) breakpoints, chosen
+  deliberately so the model isn't trained on looser urinary cutoffs. Trimethoprim/sulfamethoxazole is expressed as
+  the trimethoprim concentration.
+- **Decisions:** drop censored values unless the cutoff settles them, drop disk diffusion, drop Intermediate.
+- **Gene map:** reviewed the top 60 markers. 53 confirmed, 7 corrected: blaEC, blaEC-5 (chromosomal AmpC), marR_S3N
+  and cirA_Q56Ter no longer count; blaOXA-1 and blaOXA-48 count for ampicillin only (they don't break down
+  cefotaxime); rmtB1 now counts for gentamicin.
+
+**Fix needed on our side:** the edited map came back with 60 rows instead of 229 (the unreviewed rows were dropped).
+We restored rows 61–229 with their draft values and kept every edit. The code now applies the review: "yes" keeps
+the draft, "no" means no drug, "no + X" means drug X.
+
+**Sanity check of the cutoffs:** results that have both an old verdict and an MIC agree with the new cutoffs
+99.4–99.8% of the time for every drug, so the cutoffs are consistent with the data.
+
+**New labels:** 17,118 MIC-derived labels across 6,142 genomes we haven't scanned yet. That would add 2,440 resistant
+cefotaxime and 1,022 resistant gentamicin samples (currently 722 and 668), exactly the two drugs that are weakest now.
+
+**The fair comparison** (family split, model without the uncertain flag):
+
+| Antibiotic | Rules, draft map | Rules, expert map | Model | Who wins |
+|---|---|---|---|---|
+| Ampicillin | 50.0% | 93.3% | 93.3% | Tie (rules have fewer dangerous errors: 6.8% vs 10.9%) |
+| Cefotaxime | 84.6% | 93.6% | 94.2% | About a tie |
+| Ciprofloxacin | 79.8% | 90.4% | **97.3%** | **Model**: rules call single mutations resistant (17% wasteful errors) |
+| Gentamicin | 95.7% | 96.2% | 95.7% | Tie |
+| Trimethoprim/sulfamethoxazole | 89.1% | 89.1% | **95.0%** | **Model**: rules count sul genes alone (18.5% wasteful errors) |
+
+(Balanced accuracy.) **Honest reading:** with an expert-reviewed gene list, simple rules match the model on three
+drugs. The model wins where resistance depends on **combinations** (several mutations for ciprofloxacin; the
+trimethoprim gene, not just the sulfonamide gene, for the combination drug). Our differentiators are the
+calibrated "uncertain" flag, exact explanations, and catching label errors, not raw accuracy alone.
+
+---
+
 ## Gotchas (so nobody repeats them)
 
 - BV-BRC's FTP server timed out; use their web API.
@@ -421,6 +459,8 @@ upload a genome, and get:
 - `mlst` autodetect breaks ties at random; always pass `--scheme ecoli_achtman_4`.
 - The Claude Code background-task limit is 30 minutes; run long jobs with `nohup caffeinate -is ... &` so they
   continue independently.
+- **Editing a CSV in GitHub's web editor can drop rows.** The reviewed gene map came back with 60 of 229 rows;
+  check row counts after manual edits.
 - **Sample IDs look like numbers** (`562.100000`). pandas reads them as floats (`562.1`), so two different samples
   could silently merge. Always read CSVs with `dtype={"genome_id": str}`. (Checked: no collisions happened.)
 - A MacBook sleeps when the lid closes, even with `caffeinate`. Keep it open and plugged in for overnight runs.
