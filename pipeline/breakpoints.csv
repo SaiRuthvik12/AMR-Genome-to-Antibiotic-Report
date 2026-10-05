@@ -1,6 +1,6 @@
 antibiotic,susceptible_if_mic_le_mg_per_L,resistant_if_mic_gt_mg_per_L,eucast_table_version,notes
-ampicillin,,,,
-cefotaxime,,,,
-ciprofloxacin,,,,
-gentamicin,,,,
-trimethoprim/sulfamethoxazole,,,,
+ampicillin,8,8,16.1,Systemic iv breakpoints used.
+cefotaxime,1,2,16.1,Indications other than meningitis. (Systemic)
+ciprofloxacin,0.25,0.5,16.1,Indications other than meningitis. (Systemic)
+gentamicin,2,2,16.1,Systemic infections breakpoints used.
+trimethoprim/sulfamethoxazole,0.5,0.5,16.1,Ratio 1:19. Expressed as trimethoprim concentration.
