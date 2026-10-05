@@ -1,0 +1,22 @@
+AMR Genome-to-Antibiotic Report - Biotech Lead Decisions Log
+Date: 05 October 2026
+
+# Overview
+This log summarizes the biological curation decisions made to ensure the clinical safety and accuracy of the ML pipeline, focusing on our 5 target antibiotics: ampicillin, cefotaxime, ciprofloxacin, gentamicin, and trimethoprim-sulfamethoxazole.
+
+# Task 1: Clinical Breakpoints Selection
+* Decision: We strictly selected the "Systemic infections" (indications other than meningitis) breakpoints for Enterobacterales.
+* Rationale: We deliberately avoided "uncomplicated UTI" cutoffs. Because antibiotics concentrate heavily in urine, UTI cutoffs tolerate much higher MICs. Training our ML model on UTI thresholds would teach it to ignore structural resistance mutations, risking fatal Very Major Errors (VME) if the tool is ever used for sepsis or bloodstream infections. 
+* Note: For trimethoprim-sulfamethoxazole (1:19 ratio), the breakpoints are correctly expressed strictly as the trimethoprim concentration.
+* Source Used: EUCAST Clinical Breakpoint Tables (v16.1).
+
+# Task 2: Phenotype Data Cleaning (BV-BRC)
+To ensure the LightGBM model receives the strongest and most accurate genetic signal, we applied three strict filters to the raw dataset:
+* Censored MICs (e.g., ">16"): Dropped, unless the threshold mathematically guarantees the S/R label based on our strict systemic breakpoints.
+* Disk diffusion results: Dropped entirely. Mixing physical inhibition zone sizes (mm) with inhibitory concentrations (mg/L) corrupts the data calibration.
+* "Intermediate" (I) results: Dropped. We need polarizing extremes (clear Susceptible vs. clear Resistant) to prevent the model from assigning excessive weight to low-level resistance mechanisms, which would inflate our Major Error rate.
+
+# Task 3: Gene-to-Drug Mapping Review
+* Decision: Reviewed and corrected the automated mapping for the top 60 resistance markers. 
+* Rationale: The initial ruleset failed (e.g., calling everything ampicillin-resistant) because it naively mapped intrinsic chromosomal AmpC (blaEC) and narrow-spectrum penicillinases (blaOXA-1) to the wrong targets. We removed basal efflux mechanisms and misassigned genes to accurately reflect clinical resistance mechanisms.
+* Sources Used: Cross-referenced against CARD, NDARO, ResFinder, and UniProt databases.
