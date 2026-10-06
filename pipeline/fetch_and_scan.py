@@ -1,7 +1,9 @@
 """Overnight job: pick the most-labelled genomes, download each (gzipped), run AMRFinderPlus on it.
 
 Resumable: genomes that already have an AMRFinderPlus output are skipped, so just re-run after a crash.
-Usage: caffeinate -is .venv/bin/python pipeline/fetch_and_scan.py [N]
+Usage: caffeinate -is .venv/bin/python pipeline/fetch_and_scan.py [N] [--download-only]
+--download-only fetches the DNA files without scanning, so the part that needs the internet finishes quickly;
+the scan pass afterwards then runs offline.
 """
 import csv
 import gzip
@@ -11,11 +13,12 @@ import sys
 import time
 import urllib.request
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 DRUGS = {"ampicillin", "cefotaxime", "ciprofloxacin", "gentamicin", "trimethoprim/sulfamethoxazole"}
-N = int(sys.argv[1]) if len(sys.argv) > 1 else 6000
-WORKERS, THREADS = 8, 2  # 10 cores; downloads leave CPU idle, so oversubscribe a bit
+DOWNLOAD_ONLY = "--download-only" in sys.argv
+N = next((int(a) for a in sys.argv[1:] if a.isdigit()), 6000)
+WORKERS, THREADS = (16, 2) if DOWNLOAD_ONLY else (8, 2)  # downloads are network-bound; scans use the 10 cores
 AMR_BIN = "/opt/miniconda3/envs/amr/bin"
 GENOME_URL = "https://www.bv-brc.org/api/genome_sequence/?eq(genome_id,{})&limit(25000)"
 os.makedirs("data/genomes", exist_ok=True)
@@ -43,18 +46,19 @@ def download(gid):
         return path
     req = urllib.request.Request(GENOME_URL.format(gid), headers={
         "Accept": "application/dna+fasta", "User-Agent": "amr-hackathon/0.1"})
-    for attempt in range(3):
+    for attempt in range(9):  # network errors back off 15 s, 30 s, ... up to 10 min (~30 min total), riding out outages
         try:
             data = urllib.request.urlopen(req, timeout=180).read()
-            if not data.startswith(b">") or len(data) < 1_000_000:  # E. coli is ~5 Mb; smaller = broken
-                raise ValueError(f"bad genome download ({len(data)} bytes)")
-            with gzip.open(path + ".tmp", "wb") as f:
-                f.write(data)
-            os.rename(path + ".tmp", path)
-            return path
-        except Exception as e:
+        except OSError as e:  # DNS failure, connection reset, timeout: wait for the network to come back
             err = e
-            time.sleep(5 * (attempt + 1))
+            time.sleep(min(15 * 2 ** attempt, 600))
+            continue
+        if not data.startswith(b">") or len(data) < 1_000_000:  # E. coli is ~5 Mb; smaller = broken in the database
+            raise ValueError(f"bad genome download ({len(data)} bytes)")
+        with gzip.open(path + ".tmp", "wb") as f:
+            f.write(data)
+        os.rename(path + ".tmp", path)
+        return path
     raise err
 
 
@@ -63,6 +67,8 @@ def process(gid):
     if os.path.exists(out):
         return "skip"
     fasta = download(gid)
+    if DOWNLOAD_ONLY:
+        return "done"
     subprocess.run([f"{AMR_BIN}/amrfinder", "-n", fasta, "--organism", "Escherichia", "--plus",
                     "--threads", str(THREADS), "-o", out + ".tmp"],
                    check=True, capture_output=True, env={**os.environ, "PATH": f"{AMR_BIN}:{os.environ['PATH']}"})
@@ -72,12 +78,13 @@ def process(gid):
 
 start, done, failed = time.time(), 0, 0
 with ThreadPoolExecutor(WORKERS) as pool, open("data/processed/failed.txt", "a") as fail_log:
-    for i, (gid, fut) in enumerate([(g, pool.submit(process, g)) for g in genomes], 1):
+    futures = {pool.submit(process, g): g for g in genomes}
+    for i, fut in enumerate(as_completed(futures), 1):  # report in finishing order, so the count is real progress
         try:
             done += fut.result() == "done"
         except Exception as e:
             failed += 1
-            fail_log.write(f"{gid}\t{e} {getattr(e, 'stderr', b'')[-300:]!r}\n")
+            fail_log.write(f"{futures[fut]}\t{e} {getattr(e, 'stderr', b'')[-300:]!r}\n")
             fail_log.flush()
         if i % 25 == 0 or i == len(genomes):
             mins = (time.time() - start) / 60
