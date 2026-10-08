@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.claude
+data/raw
+data/genomes
+data/amrfinder
+data/mash
+data/test_out
+data/uploads
+__pycache__

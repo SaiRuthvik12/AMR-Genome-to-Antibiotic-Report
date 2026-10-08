@@ -1,3 +1,14 @@
+---
+title: AMR Lens
+emoji: 🧬
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Antibiotic resistance from an E. coli genome, with uncertainty
+---
+
 # AMR Lens
 
 Reads an *E. coli* genome and predicts resistance to five common antibiotics, with the genetic evidence for each

@@ -15,7 +15,7 @@ sys.path[:0] = ["model", "pipeline"]
 from final import MODEL_PATH, predict  # noqa: E402
 from qc_and_lineage import reason  # noqa: E402
 
-BIO = "/opt/miniconda3/envs/amr/bin"
+BIO = os.environ.get("AMR_BIN", "/opt/miniconda3/envs/amr/bin")  # bioinformatics tools; the Docker image sets AMR_BIN
 REF_SKETCH = "data/models/ref_ecoli.msh"
 ENV = {**os.environ, "PATH": f"{BIO}:{os.environ['PATH']}"}
 DRUG_INFO = {  # display name, drug class
