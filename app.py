@@ -13,7 +13,7 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
-from report import DRUG_INFO, build_report, llm_summary, load_models
+from report import DRUG_INFO, build_report, llm_summary, load_models, tools_available
 
 if os.path.exists(".env"):  # optional: ANTHROPIC_API_KEY=... for the AI summary
     for line in open(".env"):
@@ -134,7 +134,12 @@ def save_upload(upload):
 with st.sidebar:
     st.markdown('<div class="brand">AMR Lens</div><div class="brand-sub">Genome-based resistance report</div>',
                 unsafe_allow_html=True)
-    source = st.radio("Sample", ["Example isolates", "Upload a genome"], label_visibility="collapsed")
+    can_upload = tools_available()
+    source = st.radio("Sample", ["Example isolates", "Upload a genome"] if can_upload else ["Example isolates"],
+                      label_visibility="collapsed")
+    if not can_upload:
+        st.caption("This online version runs the example isolates. Scanning an uploaded genome needs the "
+                   "bioinformatics tools, which run in our local version.")
     path = cached_amr = None
     lab = {}
     if source == "Example isolates":

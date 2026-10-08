@@ -38,13 +38,24 @@ def _run(args):
     return subprocess.run(args, check=True, capture_output=True, text=True, env=ENV).stdout
 
 
+def tools_available():
+    """False on hosts without the bioinformatics tools (e.g. Streamlit Community Cloud): examples only."""
+    return os.path.exists(f"{BIO}/amrfinder")
+
+
 def analyze_genome(fasta_path, cached_amrfinder=None):
-    """QC numbers + resistance markers for one assembled genome (FASTA, optionally .gz)."""
-    stats = _run([f"{BIO}/seqkit", "stats", "-a", "-T", fasta_path]).splitlines()
-    row = dict(zip(stats[0].split("\t"), stats[1].split("\t")))
-    dist = float(_run([f"{BIO}/mash", "dist", REF_SKETCH, fasta_path]).split("\t")[2])
-    qc = pd.Series({"size_mb": round(int(row["sum_len"]) / 1e6, 2), "contigs": int(row["num_seqs"]),
-                    "n50": int(row["N50"]), "dist_to_ecoli": round(dist, 4)})
+    """QC numbers + resistance markers for one assembled genome (FASTA, optionally .gz).
+    With a cached AMRFinderPlus result, QC numbers come from data/processed/qc.csv, so no tools are needed."""
+    gid = os.path.basename(fasta_path).removesuffix(".fna.gz").removeprefix("upload_test_")
+    saved = pd.read_csv("data/processed/qc.csv", dtype={"genome_id": str}).set_index("genome_id") if cached_amrfinder else None
+    if saved is not None and gid in saved.index:
+        qc = saved.loc[gid, ["size_mb", "contigs", "n50", "dist_to_ecoli"]].copy()
+    else:
+        stats = _run([f"{BIO}/seqkit", "stats", "-a", "-T", fasta_path]).splitlines()
+        row = dict(zip(stats[0].split("\t"), stats[1].split("\t")))
+        dist = float(_run([f"{BIO}/mash", "dist", REF_SKETCH, fasta_path]).split("\t")[2])
+        qc = pd.Series({"size_mb": round(int(row["sum_len"]) / 1e6, 2), "contigs": int(row["num_seqs"]),
+                        "n50": int(row["N50"]), "dist_to_ecoli": round(dist, 4)})
     qc["qc_reason"] = reason(qc)
 
     amr_tsv = cached_amrfinder
