@@ -3,8 +3,11 @@
 Run:  .venv/bin/streamlit run app.py
 Research prototype for decision support. Not for clinical use.
 """
+import gzip
 import hashlib
+import io
 import os
+import re
 from html import escape
 
 import pandas as pd
@@ -89,6 +92,7 @@ st.markdown(CSS, unsafe_allow_html=True)
 
 PILL = {"R": ("Resistant", "r"), "S": ("Susceptible", "s"), "UNCERTAIN": ("Uncertain", "u")}
 DEMO = pd.read_csv("demo/demo_samples.csv", dtype=str)
+DEMO = DEMO[DEMO.show_in_app != "no"]  # held-out genomes kept for the live upload demo
 LABELS = pd.read_csv("data/processed/labels.csv", dtype={"genome_id": str}).set_index("genome_id")
 
 
@@ -105,6 +109,14 @@ def cached_report(path, alpha, cached_amrfinder):
 @st.cache_data(show_spinner=False)
 def cached_summary(path, alpha, cached_amrfinder):
     return llm_summary(cached_report(path, alpha, cached_amrfinder))
+
+
+def bvbrc_id(data):
+    """BV-BRC FASTA headers end with '| <genome_id>]'; used only to show known lab results next to the prediction."""
+    stream = gzip.GzipFile(fileobj=io.BytesIO(data)) if data[:2] == b"\x1f\x8b" else io.BytesIO(data)
+    head = stream.readline(2000).decode(errors="ignore")
+    found = re.search(r"\|\s*(\d+\.\d+)\]", head)
+    return found.group(1) if found else None
 
 
 def save_upload(upload):
@@ -138,6 +150,9 @@ with st.sidebar:
         if upload:
             path = save_upload(upload)
             sample_name, sample_id = upload.name, os.path.basename(path)
+            gid = bvbrc_id(upload.getvalue())
+            if gid in LABELS.index:  # a public genome with known lab results: show them for comparison
+                sample_id, lab = f"BV-BRC {gid}", LABELS.loc[gid].dropna().to_dict()
     level = st.segmented_control("Confidence level", ["Strict", "Balanced"], default="Strict",
                                  help="Strict: aims for about 2% errors, more answers flagged uncertain. "
                                       "Balanced: aims for about 5% errors, fewer uncertain answers.")

@@ -1,4 +1,5 @@
-genome_id,title,description
-562.28131,Multidrug-resistant isolate,Lab: resistant to all five antibiotics
-562.100082,Mixed profile,Lab: resistant to three of five antibiotics
-562.100017,Susceptible isolate,Lab: all five antibiotics work
+genome_id,title,description,show_in_app
+562.28131,Multidrug-resistant isolate,Lab: resistant to all five antibiotics,yes
+562.100082,Mixed profile,Lab: resistant to three of five antibiotics,yes
+562.100017,Susceptible isolate,Lab: all five antibiotics work,yes
+562.141160,Live upload test (KPC-2 carbapenemase),"Held out for the live upload demo; lab: resistant to ampicillin, cefotaxime, ciprofloxacin, gentamicin",no
