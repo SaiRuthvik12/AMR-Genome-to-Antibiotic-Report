@@ -238,9 +238,10 @@ with tab_report:
         drugs = rep["drugs"]
         with st.spinner("Writing the summary"):
             summary, why_not = cached_summary(active["path"], active["alpha"], active["cached"])
-        body = (f'<div class="summary">{escape(summary)}</div>' if summary else f'<div class="muted">{escape(why_not)}</div>')
-        st.markdown(f'<div class="card"><div class="eyebrow">Summary · written by Claude from the evidence below</div>'
-                    f'{body}</div>', unsafe_allow_html=True)
+        if summary or "ANTHROPIC_API_KEY" not in (why_not or ""):  # no key configured: hide the box instead of a setup hint
+            body = (f'<div class="summary">{escape(summary)}</div>' if summary else f'<div class="muted">{escape(why_not)}</div>')
+            st.markdown(f'<div class="card"><div class="eyebrow">Summary · written by Claude from the evidence below</div>'
+                        f'{body}</div>', unsafe_allow_html=True)
 
         n = {k: sum(r["call"] == k for r in drugs.values()) for k in PILL}
         st.markdown(
