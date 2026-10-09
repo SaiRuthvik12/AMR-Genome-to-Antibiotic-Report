@@ -169,6 +169,12 @@ with st.sidebar:
 if run:
     st.session_state.active = {"path": path, "cached": cached_amr, "alpha": alpha, "name": sample_name,
                                "id": sample_id, "lab": lab}
+elif "active" not in st.session_state and st.query_params.get("example") in set(DEMO.genome_id):
+    # a link like ?example=562.28131 opens that example's report directly
+    ex = DEMO[DEMO.genome_id == st.query_params["example"]].iloc[0]
+    st.session_state.active = {"path": f"demo/{ex.genome_id}.fna.gz", "cached": f"demo/{ex.genome_id}.amrfinder.tsv",
+                               "alpha": 0.02, "name": ex.title, "id": ex.genome_id,
+                               "lab": LABELS.loc[ex.genome_id].dropna().to_dict()}
 
 # ---------- Header ----------
 st.markdown('<div class="eyebrow">Antimicrobial resistance · E. coli</div>'
