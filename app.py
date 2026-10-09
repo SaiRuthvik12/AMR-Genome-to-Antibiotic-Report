@@ -143,7 +143,9 @@ with st.sidebar:
     path = cached_amr = None
     lab = {}
     if source == "Example isolates":
-        pick = st.selectbox("Example isolate", DEMO.title)
+        linked = st.query_params.get("example")  # keep the sidebar in step with a ?example= link
+        start = DEMO.genome_id.tolist().index(linked) if linked in DEMO.genome_id.tolist() else 0
+        pick = st.selectbox("Example isolate", DEMO.title, index=start)
         row = DEMO[DEMO.title == pick].iloc[0]
         st.caption(f"{row.description}. Not used to train the model.")
         path, cached_amr = f"demo/{row.genome_id}.fna.gz", f"demo/{row.genome_id}.amrfinder.tsv"

@@ -8,7 +8,7 @@ antibiotics will still work. Each answer shows the genes behind it. When the mod
 
 Built for the AI + Healthcare hackathon track: *make healthcare information clearer, more accessible, or easier to act on.*
 
-- **Live app:** [link]
+- **Live app:** https://amr-lens.streamlit.app (example samples only; uploading needs the local setup below)
 - **Demo video:** [link]
 
 > Research prototype. It does not replace laboratory susceptibility testing and gives no treatment advice.
