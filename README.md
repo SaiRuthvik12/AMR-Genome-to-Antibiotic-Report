@@ -2,20 +2,20 @@
 
 Turning bacterial DNA into antibiotic answers doctors can act on.
 
-AMR Lens takes the genome of an *E. coli* sample, finds the resistance genes in it, and predicts whether five common
+AMR Lens takes the genome of an _E. coli_ sample, finds the resistance genes in it, and predicts whether five common
 antibiotics will still work. Each answer shows the genes behind it. When the model isn't confident enough, it says
 "uncertain" and asks for a lab test instead of guessing.
 
-Built for the AI + Healthcare hackathon track: *make healthcare information clearer, more accessible, or easier to act on.*
+Built for the AI + Healthcare hackathon track: _make healthcare information clearer, more accessible, or easier to act on._
 
 - **Live app:** https://amr-lens.streamlit.app (example samples only; uploading needs the local setup below)
-- **Demo video:** [link]
+- **Demo video:** https://youtu.be/5U6x6LshuS4
 
 > Research prototype. It does not replace laboratory susceptibility testing and gives no treatment advice.
 
 ## Demo video
 
-<!-- Add the recording here -->
+[![AMR Lens demo video](https://img.youtube.com/vi/5U6x6LshuS4/maxresdefault.jpg)](https://youtu.be/5U6x6LshuS4)
 
 ## Why we built this
 
@@ -49,8 +49,8 @@ The "How well it works" tab shows the test results:
 
 **Biology side**
 
-1. We collected 12,126 *E. coli* genomes with lab test results from the public [BV-BRC](https://www.bv-brc.org) database.
-2. We removed broken or mislabelled genomes: wrong size, too fragmented, or not actually *E. coli*.
+1. We collected 12,126 _E. coli_ genomes with lab test results from the public [BV-BRC](https://www.bv-brc.org) database.
+2. We removed broken or mislabelled genomes: wrong size, too fragmented, or not actually _E. coli_.
 3. Where labs only reported a raw measurement (MIC), we turned it into resistant or susceptible using the
    [EUCAST](https://www.eucast.org) v16.1 clinical breakpoints for systemic infections.
 4. We scanned every genome with NCBI's [AMRFinderPlus](https://github.com/ncbi/amr), which finds known resistance genes
@@ -73,13 +73,13 @@ The "How well it works" tab shows the test results:
 
 All numbers are on bacterial families the model never saw during training (5-fold cross-validation, grouped by family).
 
-| Antibiotic | Balanced accuracy | Accuracy when confident | Flagged uncertain | Expert gene rules |
-|---|---|---|---|---|
-| Ampicillin | 95.0% | 97.2% | 27% | 94.0% |
-| Cefotaxime | 96.0% | 98.0% | 12% | 91.8% |
-| Ciprofloxacin | 95.7% | 98.0% | 7% | 88.5% |
-| Gentamicin | 95.8% | 96.7% | 49% | 95.8% |
-| Trimethoprim-sulfamethoxazole | 95.7% | 97.4% | 20% | 87.7% |
+| Antibiotic                    | Balanced accuracy | Accuracy when confident | Flagged uncertain | Expert gene rules |
+| ----------------------------- | ----------------- | ----------------------- | ----------------- | ----------------- |
+| Ampicillin                    | 95.0%             | 97.2%                   | 27%               | 94.0%             |
+| Cefotaxime                    | 96.0%             | 98.0%                   | 12%               | 91.8%             |
+| Ciprofloxacin                 | 95.7%             | 98.0%                   | 7%                | 88.5%             |
+| Gentamicin                    | 95.8%             | 96.7%                   | 49%               | 95.8%             |
+| Trimethoprim-sulfamethoxazole | 95.7%             | 97.4%                   | 20%               | 87.7%             |
 
 "Accuracy when confident" and "flagged uncertain" are for the Strict setting. On that setting, the dangerous error
 (saying a drug works when it doesn't) is 1.6–2.1% for every drug. The usual bar for lab tests is around 1.5%, so
@@ -102,7 +102,7 @@ A few things we learned along the way:
 
 - It only knows resistance genes that are already in the database. A new mechanism is invisible to it, and it won't
   necessarily flag that as uncertain.
-- *E. coli* only, five antibiotics.
+- _E. coli_ only, five antibiotics.
 - The bacteria still has to be grown before it can be sequenced. This saves the testing step, not the growing step.
 - Gentamicin still gets a lot of uncertain answers (49% on Strict).
 - Not validated in a hospital and not approved for clinical use.
@@ -169,5 +169,5 @@ Streamlit, and the Claude API.
 
 ## Team
 
-- [Name]: AI and software
-- [Name]: biotechnology and data curation
+- Sai Ruthvik Athota: AI and software
+- Matheus Pereira: biotechnology and data curation
